@@ -15,7 +15,7 @@ To download a stream of tweets and check that everything is working fine, enter 
 python twitterstream.py > output.json
 ```
 
-This will create a continous stream of tweets and save it to a file named `output.json`. To stop, press control + C on your keyboard.
+This will create a continous stream of tweets and save it to a file named `output.json`. Let it run for a while to generate new tweets, and then press control + C on your keyboard to stop.
 
 ## License
 This directory is licensed under the MIT License.
