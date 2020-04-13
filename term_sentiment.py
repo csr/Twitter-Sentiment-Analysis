@@ -4,39 +4,71 @@ import json
 reload(sys)
 sys.setdefaultencoding('utf8')
 
-scores = {} # initialize an empty dictionary
+knownWordsScores = {} # scores from the AFINN-111.txt file
+tweetScores = {}
+unknownWordsScores = {} # new words found in tweets 
 
-def initializeScores():
-    afinnfile = open("AFINN-111.txt")
-    for line in afinnfile:
+# Fill dictionary containing scores for known words
+def initializeScores(fp):
+    for line in fp:
       term, score  = line.split("\t")  # The file is tab-delimited. "\t" means "tab character"
-      scores[term] = int(score)  # Convert the score to an integer.
+      knownWordsScores[term] = int(score)  # Convert the score to an integer.
 
-def parseTweets(fp):
-	for line in fp:
-		data = json.loads(line)
-		if "text" in data:
-			tweet = data
-			text = tweet['text']
-			score = 0
-			for word in text.split():
-				if word in scores:
-					score += scores[word]
-			# If we detect a positive or negative score
-			# then update all the words scores
-			for word in text.split():
-				if word not in scores:
-					scores[word] = score
+# Get sentiment score of each tweet
+def scoreTweets(tweets):
+	for tweet in tweets:
+		tweetScore = 0
+		for word in tweet.split():
+			if word in knownWordsScores:
+				tweetScore += knownWordsScores[word]
+		tweetScores[tweet] = tweetScore
+		# print(str(tweetScores[tweet]) + ' tweet score for tweet: ' + tweet)
+
+# For every tweet, score the terms that do not have a score yet
+def rateNewTerms(tweets):
+	for tweet in tweets:
+		tweetScore = tweetScores[tweet]
+		# print(str(tweetScores[tweet]) + ' tweet score for tweet: ' + tweet)
+		for word in tweet.split():
+			if word not in knownWordsScores:
+				if word not in unknownWordsScores:
+					# Case 1: we never found this term, creating array
+					unknownWordsScores[word] = [tweetScore]
+					# print('first time seeing this word, adding tweet score: ' + str(tweetScore))
+				# Case 2: we've already found this term once, append tweet score to array
+				else:
+					# print('NOT first time seeing this word, adding tweet score: ' + str(tweetScore))
+					unknownWordsScores[word].append(tweetScore)
 
 def printScores():
-	for i, (key, score) in enumerate(scores.items()):
-	    print(key + ' ' + str(score))
+	for i, (key, scores) in enumerate(unknownWordsScores.items()):
+		# Skip words with multiple words
+		if ' ' not in key:
+			average = 0
+			for score in scores:
+				average += score
+			average /= len(scores) 
+			print(key + ' ' + str(average))
+
+def getTweets(fp):
+	tweets = []
+	for line in fp:
+		data = json.loads(line)
+		# Only parse tweets with text
+		if "text" in data:
+			tweets.append(data['text'])
+	return tweets
 
 def main():
     sent_file = open(sys.argv[1])
     tweet_file = open(sys.argv[2])
-    initializeScores()
-    parseTweets(tweet_file)
+
+    initializeScores(sent_file)
+
+    tweets = getTweets(tweet_file)
+    scoreTweets(tweets)
+    rateNewTerms(tweets)
+
     printScores()
 
 if __name__ == '__main__':
